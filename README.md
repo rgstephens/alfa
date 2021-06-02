@@ -17,7 +17,7 @@ make run-server
 ```
 
 
-## Добавление в другой в виде зависимости
+## Добавление в другой проект в виде зависимости
 requirements.txt
 ```
 git+ssh://git@github.com/magnit-tech/alfa.git
