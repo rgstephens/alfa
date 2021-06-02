@@ -1,0 +1,13 @@
+version: "3.7"
+
+volumes:
+  postgres_data: {}
+
+services:
+  alfa:
+    build:
+      context: .
+      dockerfile: .cicd/docker/base/Dockerfile
+    ports:
+      - "8000:80"
+      - "8001:81"
