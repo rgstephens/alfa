@@ -72,9 +72,49 @@ labels = (
 
 REQUEST_TIME = Histogram(
     'http_server_duration',
-    'http_server_duration server latency in milliseconds',
+    'http_server_duration server latency in seconds',
     labels,
-    buckets=(50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 750, 1000, 2000, 3000, 5000),
+    buckets=(
+        0.0005,
+        0.001,
+        0.005,
+        0.01,
+        0.02,
+        0.05,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+    ),
 )
 
 
@@ -149,7 +189,8 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                 self.service_version,  # service_version
                 self.service_instance_id,  # service_instance_id
             ]
-            latency = (end - begin) * 1000  # in milliseconds
+            # latency = (end - begin) * 1000  # in milliseconds
+            latency = end - begin  # in seconds
             REQUEST_TIME.labels(*labels).observe(latency)
 
         return response
@@ -185,7 +226,14 @@ class StarletteTracingMiddleWare:
             span.set_tag(tags.HTTP_METHOD, scope["method"])
             host, port = scope["server"]
             url = urlunparse(
-                (str(scope["scheme"]), f"{host}:{port}", str(scope["path"]), "", str(scope["query_string"]), "",)
+                (
+                    str(scope["scheme"]),
+                    f"{host}:{port}",
+                    str(scope["path"]),
+                    "",
+                    str(scope["query_string"]),
+                    "",
+                )
             )
             span.set_tag(tags.HTTP_URL, url)
             await self.app(scope, receive, send)
