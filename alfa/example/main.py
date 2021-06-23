@@ -7,7 +7,7 @@ from fastapi import APIRouter, FastAPI
 
 from alfa.dto import StrictBaseDTO
 from alfa.handler import router as maintenance_router
-from alfa.logger import _get_configure_logging, log_method
+from alfa.logger import _get_configure_logging, log_method, log_sync_method
 from alfa.middleware import (
     AccessLogMiddleware,
     ExceptionMiddleware,
@@ -21,8 +21,12 @@ from alfa.opentracing import (
     get_current_trace_id,
     get_tracer,
     get_tracing_http_headers,
-    new_async_span,
-    new_sync_span,
+    trace_async_classmethod,
+    trace_async_fn,
+    trace_async_method,
+    trace_classmethod,
+    trace_fn,
+    trace_method,
 )
 from alfa.sentry import configure_sentry
 from alfa.server import MyORJSONResponse, install_http_server
@@ -39,16 +43,34 @@ class TestResp(StrictBaseDTO):
 
 class TestService:
     @classmethod
-    @new_async_span
+    @trace_async_classmethod
     @log_method('test')
-    async def _async_test(cls) -> None:
+    async def test_async_classmethod(cls) -> None:
         pass
 
     @classmethod
-    @new_sync_span
-    @log_method('test')
-    def _sync_test(cls) -> None:
+    @trace_classmethod
+    @log_sync_method('test')
+    def test_sync_classmethod(cls) -> None:
         pass
+
+    @trace_async_method
+    async def test_async_method(self) -> None:
+        pass
+
+    @trace_method
+    def test_sync_method(self) -> None:
+        pass
+
+
+@trace_fn
+def test_sync_fn() -> None:
+    pass
+
+
+@trace_async_fn
+async def test_async_fn() -> None:
+    pass
 
 
 @router.get('/test', response_model=TestResp)
@@ -57,8 +79,16 @@ async def version() -> MyORJSONResponse:
 
     with tracer.start_active_span('foo', finish_on_close=True):
         with tracer.start_active_span('bar', finish_on_close=True):
-            await TestService._async_test()
-            TestService._sync_test()
+
+            await TestService.test_async_classmethod()
+            TestService.test_sync_classmethod()
+
+            await TestService().test_async_method()
+            TestService().test_sync_method()
+
+            await test_async_fn()
+            test_sync_fn()
+
             with tracer.start_active_span('baz', finish_on_close=True):
                 logger.info(f'{tracer=}')
                 logger.info(f'trace_id: {get_current_trace_id()}')

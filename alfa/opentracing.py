@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import logging
 from functools import wraps
 from typing import Any, Callable, Dict, Optional, cast
@@ -12,6 +13,14 @@ from opentracing.scope_managers.contextvars import ContextVarsScopeManager
 
 tracer: Tracer
 logger = logging.getLogger(__name__)
+
+
+class IsAwaitable(Exception):
+    ...
+
+
+class IsNotAwaitable(Exception):
+    ...
 
 
 def configure_tracing(app_name: str, host: str, port: int, propagation: str, jaeger_enabled: bool) -> Tracer:
@@ -65,24 +74,42 @@ def get_tracing_http_headers() -> Dict[str, str]:
     return headers
 
 
-def new_span(f: Callable[..., Any]) -> Callable[..., Any]:
-    @wraps(f)
-    async def wrapper(cls: Any, *args: Any, **kwargs: Any) -> Any:
-        db_query = kwargs.get('query', None)
-        current_tags = {}
-        if db_query is not None:
-            current_tags[tags.DATABASE_TYPE] = 'postgres'
-            current_tags[tags.DATABASE_STATEMENT] = db_query
+def _get_span_and_scope(f: Callable[..., Any], **kwargs: Any):
+    db_query = kwargs.get('query', None)
+    current_tags = {}
+    if db_query is not None:
+        current_tags[tags.DATABASE_TYPE] = 'postgres'
+        current_tags[tags.DATABASE_STATEMENT] = db_query
 
-        tracer = get_tracer()
-        span = tracer.start_span(operation_name=f.__qualname__, child_of=get_current_span(), tags=current_tags)
-        scope = tracer.scope_manager.activate(span, True)
+    tracer = get_tracer()
+    span = tracer.start_span(operation_name=f.__qualname__, child_of=get_current_span(), tags=current_tags)
+    scope = tracer.scope_manager.activate(span, True)
+    return span, scope
+
+
+def trace_fn(f: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Используется для отслеживания синхронных функций.
+
+    Пример
+    ------
+    >>> @trace_fn
+    ... def any_function(*args, **kwargs):
+    ...     pass
+    ...
+    """
+    if inspect.iscoroutinefunction(f):
+        raise IsAwaitable(f'{f.__qualname__} is awaitable. Use @trace_async_fn decorator instead.')
+
+    @wraps(f)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        span, scope = _get_span_and_scope(f, **kwargs)
         try:
-            result = await f(cls, *args, **kwargs)
-        except Exception as exp:
+            result = f(*args, **kwargs)
+        except Exception as error:
             span.set_tag(tags.ERROR, True)
-            span.set_tag('error.message', str(exp))
-            raise exp
+            span.set_tag('error.message', str(error))
+            raise error
         finally:
             scope.close()
         return result
@@ -90,24 +117,123 @@ def new_span(f: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def new_sync_span(f: Callable[..., Any]) -> Callable[..., Any]:
-    @wraps(f)
-    def wrapper(cls: Any, *args: Any, **kwargs: Any) -> Any:
-        db_query = kwargs.get('query', None)
-        current_tags = {}
-        if db_query is not None:
-            current_tags[tags.DATABASE_TYPE] = 'postgres'
-            current_tags[tags.DATABASE_STATEMENT] = db_query
+def trace_async_fn(f: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Используется для отслеживания асинхронных функций.
 
-        tracer = get_tracer()
-        span = tracer.start_span(operation_name=f.__qualname__, child_of=get_current_span(), tags=current_tags)
-        scope = tracer.scope_manager.activate(span, True)
+    Пример
+    ------
+    >>> @trace_async_fn
+    ... async def any_function(*args, **kwargs):
+    ...     pass
+    ...
+    """
+    if not inspect.iscoroutinefunction(f):
+        raise IsNotAwaitable(f'{f.__qualname__} is not awaitable. Use @trace_fn decorator instead.')
+
+    @wraps(f)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        span, scope = _get_span_and_scope(f, **kwargs)
+        try:
+            result = await f(*args, **kwargs)
+        except Exception as error:
+            span.set_tag(tags.ERROR, True)
+            span.set_tag('error.message', str(error))
+            raise error
+        finally:
+            scope.close()
+        return result
+
+    return wrapper
+
+
+def trace_method(f: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Используется для отслеживания синхронных методов.
+
+    Пример
+    ------
+    >>> class AnyClass:
+    ...     @trace_method
+    ...     def any_method(self, *args, **kwargs):
+    ...         pass
+    ...
+    """
+    if inspect.iscoroutinefunction(f):
+        raise IsAwaitable(f'{f.__qualname__} is awaitable. Use @trace_async_method decorator instead.')
+
+    @wraps(f)
+    def wrapper(self, *args: Any, **kwargs: Any) -> Any:
+        span, scope = _get_span_and_scope(f, **kwargs)
+        try:
+            result = f(self, *args, **kwargs)
+        except Exception as error:
+            span.set_tag(tags.ERROR, True)
+            span.set_tag('error.message', str(error))
+            raise error
+        finally:
+            scope.close()
+        return result
+
+    return wrapper
+
+
+def trace_async_method(f: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Используется для отслеживания асинхронных методов.
+
+    Пример
+    ------
+    >>> class AnyClass:
+    ...     @trace_async_method
+    ...     async def any_method(self, *args, **kwargs):
+    ...         pass
+    ...
+    """
+    if not inspect.iscoroutinefunction(f):
+        raise IsNotAwaitable(f'{f.__qualname__} is not awaitable. Use @trace_method decorator instead.')
+
+    @wraps(f)
+    async def wrapper(self, *args: Any, **kwargs: Any) -> Any:
+        span, scope = _get_span_and_scope(f, **kwargs)
+        try:
+            result = await f(self, *args, **kwargs)
+        except Exception as error:
+            span.set_tag(tags.ERROR, True)
+            span.set_tag('error.message', str(error))
+            raise error
+        finally:
+            scope.close()
+        return result
+
+    return wrapper
+
+
+def trace_classmethod(f: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Используется для отслеживания синхронных классовых методов.
+
+    Пример
+    ------
+    >>> class AnyClass:
+    ...     @classmethod
+    ...     @trace_classmethod
+    ...     def any_method(cls, *args, **kwargs):
+    ...         pass
+    ...
+    """
+    if inspect.iscoroutinefunction(f):
+        raise IsAwaitable(f'{f.__qualname__} is awaitable. Use @trace_async_classmethod decorator instead.')
+
+    @wraps(f)
+    def wrapper(cls, *args: Any, **kwargs: Any) -> Any:
+        span, scope = _get_span_and_scope(f, **kwargs)
         try:
             result = f(cls, *args, **kwargs)
-        except Exception as exp:
+        except Exception as error:
             span.set_tag(tags.ERROR, True)
-            span.set_tag('error.message', str(exp))
-            raise exp
+            span.set_tag('error.message', str(error))
+            raise error
         finally:
             scope.close()
         return result
@@ -115,4 +241,38 @@ def new_sync_span(f: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-new_async_span = new_span
+def trace_async_classmethod(f: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Используется для отслеживания асинхронных классовых методов.
+
+    Пример
+    ------
+    >>> class AnyClass:
+    ...     @classmethod
+    ...     @trace_async_classmethod
+    ...     async def any_method(cls, *args, **kwargs):
+    ...         pass
+    ...
+    """
+    if not inspect.iscoroutinefunction(f):
+        raise IsNotAwaitable(f'{f.__qualname__} is not awaitable. Use @trace_classmethod decorator instead.')
+
+    @wraps(f)
+    async def wrapper(cls, *args: Any, **kwargs: Any) -> Any:
+        span, scope = _get_span_and_scope(f, **kwargs)
+        try:
+            result = await f(cls, *args, **kwargs)
+        except Exception as error:
+            span.set_tag(tags.ERROR, True)
+            span.set_tag('error.message', str(error))
+            raise error
+        finally:
+            scope.close()
+        return result
+
+    return wrapper
+
+
+new_span = trace_async_classmethod
+new_async_span = trace_async_classmethod
+new_sync_span = trace_classmethod

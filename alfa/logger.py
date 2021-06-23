@@ -56,3 +56,23 @@ def log_method(logger_name: str) -> Callable[..., Any]:
         return wrapped
 
     return wrapper
+
+
+def log_sync_method(logger_name: str) -> Callable[..., Any]:
+    def wrapper(f: Callable[..., Any]) -> Callable[..., Any]:
+        @wraps(f)
+        def wrapped(self: Any, *args: Any, **kwargs: Any) -> Any:
+
+            _logger = logging.getLogger(logger_name)
+            if args:
+                _logger.debug(f'{f.__qualname__}: start', **log_extra(args=args))
+            else:
+                _logger.debug(f'{f.__qualname__}: start')
+            result: Any = f(self, *args, **kwargs)
+            _logger.debug(f'{f.__qualname__}: finish')
+
+            return result
+
+        return wrapped
+
+    return wrapper
