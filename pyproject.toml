@@ -11,7 +11,7 @@ exclude = '''
 
 [tool.poetry]
 name = "alfa"
-version = "0.3.0"
+version = "0.4.0"
 description = "alfa"
 authors = ["Anton Ogorodnikov"]
 
@@ -20,6 +20,9 @@ authors = ["Anton Ogorodnikov"]
 "ruamel.yaml" = "^0.16.10"
 aiohttp = "3.*" # for sentry
 aiopg = "1.*"
+aioredis = "^1.3.1"
+aioredlock = "^0.7.1"
+asyncpg = "^0.23.0"
 coloredlogs = "14.*"
 delorean = "1.*"
 fastapi = "0.*"
@@ -28,17 +31,15 @@ httpx = "0.*"
 jaeger-client = "4.*"
 orjson = "3.*"
 prometheus-client = "0.*"
+pydantic = ">=1.5"
 python = "3.9.*"
+python-json-logger = "0.*"
 python-multipart = "0.*" # for fastapi
 sadisplay = "0.*"
 sentry-sdk = "0.*"
 sqlalchemy = "1.*"
-uvicorn = "0.*"
 statsd = "3.*"
-pydantic = ">=1.5"
-asyncpg = "^0.23.0"
-aioredis = "^1.3.1"
-aioredlock = "^0.7.1"
+uvicorn = "0.*"
 
 [tool.poetry.dev-dependencies]
 autoflake = "1.*"

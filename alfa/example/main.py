@@ -7,7 +7,7 @@ from fastapi import APIRouter, FastAPI
 
 from alfa.dto import StrictBaseDTO
 from alfa.handler import router as maintenance_router
-from alfa.logger import _get_configure_logging, log_method, log_sync_method
+from alfa.logger import configure_logging, log_method, log_sync_method
 from alfa.middleware import (
     AccessLogMiddleware,
     ExceptionMiddleware,
@@ -103,9 +103,7 @@ def get_http_server() -> uvicorn.Server:
     configure_tracing('alfa', '127.0.0.1', 6831, 'b3', True)
     configure_sentry('', '', '', True)
 
-    uvicorn_server: uvicorn.Server = install_http_server(
-        'test', '/openapi.json', '0.0.0.0', 8000, _get_configure_logging()
-    )
+    uvicorn_server: uvicorn.Server = install_http_server('test', '/openapi.json', '0.0.0.0', 8000, configure_logging())
     app: FastAPI = uvicorn_server.config.app
 
     # add middlewares

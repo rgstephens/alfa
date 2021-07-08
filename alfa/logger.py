@@ -5,8 +5,6 @@ from logging import LogRecord, config
 from typing import Any, Callable, Dict, Optional
 
 import coloredlogs
-
-from alfa.const import StrEnum
 from pythonjsonlogger.jsonlogger import JsonFormatter, merge_record_extra
 
 
@@ -52,7 +50,7 @@ def _get_logger_level(logger_name: str, debug_loggers: Optional[list[str]] = Non
 
 
 def configure_logging(
-    logger_class: StrEnum, enable_json: bool = False, debug_loggers: Optional[list[str]] = None
+    loggers: Optional[list[str]] = None, enable_json: bool = False, debug_loggers: Optional[list[str]] = None
 ) -> Dict[str, Any]:
     if enable_json:
         _format = '%(asctime)s %(levelname)s [%(name)s] %(message)s %(props)s'
@@ -61,9 +59,9 @@ def configure_logging(
         _format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s %(props)s'
         formatter = 'alfa.logger.ExtraFormatter'
 
-    loggers = {
+    _loggers = {
         _name: {'handlers': ['default'], 'level': _get_logger_level(_name, debug_loggers), 'propagate': False}
-        for _name in logger_class.get_names()
+        for _name in (loggers or [])
     }
     _config: dict[str, Any] = {
         'version': 1,
@@ -71,7 +69,7 @@ def configure_logging(
         'formatters': {'default': {'format': _format, 'class': formatter}},
         'handlers': {'default': {'class': 'logging.StreamHandler', 'formatter': 'default'}},
         'root': {'handlers': ['default'], 'level': logging.INFO},
-        'loggers': {'': {'handlers': ['default'], 'level': logging.INFO, 'propagate': False}, **loggers},
+        'loggers': {'': {'handlers': ['default'], 'level': logging.INFO, 'propagate': False}, **_loggers},
     }
     config.dictConfig(_config)
     return _config
