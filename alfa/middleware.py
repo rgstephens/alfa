@@ -226,14 +226,7 @@ class StarletteTracingMiddleWare:
             span.set_tag(tags.HTTP_METHOD, scope["method"])
             host, port = scope["server"]
             url = urlunparse(
-                (
-                    str(scope["scheme"]),
-                    f"{host}:{port}",
-                    str(scope["path"]),
-                    "",
-                    str(scope["query_string"]),
-                    "",
-                )
+                (str(scope["scheme"]), f"{host}:{port}", str(scope["path"]), "", str(scope["query_string"]), "",)
             )
             span.set_tag(tags.HTTP_URL, url)
             await self.app(scope, receive, send)
