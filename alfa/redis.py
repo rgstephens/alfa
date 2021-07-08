@@ -17,6 +17,7 @@ class Config:
     minsize: int
     maxsize: int
     locks_db: int
+    password: str
 
 
 _CONFIG: Optional[Config] = None
@@ -29,7 +30,8 @@ def init_config(
     port: int,
     minsize: int,
     maxsize: int,
-    locks_db: int = 1,
+    password: str = None,
+    locks_db: int = 1
 ) -> None:
     global _CONFIG
 
@@ -39,6 +41,7 @@ def init_config(
         minsize=minsize,
         maxsize=maxsize,
         locks_db=locks_db,
+        password=password
     )
 
 
@@ -54,6 +57,7 @@ async def _init() -> Tuple[aioredis.Redis, Aioredlock]:
             f'redis://{_CONFIG.host}:{_CONFIG.port}',
             minsize=_CONFIG.minsize,
             maxsize=_CONFIG.maxsize,
+            password=_CONFIG.password
         )
 
     if not _REDIS_LOCK_MANGER:
