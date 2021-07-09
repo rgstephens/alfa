@@ -7,6 +7,8 @@ from typing import Any, Callable, Dict, Optional
 import coloredlogs
 from pythonjsonlogger.jsonlogger import JsonFormatter, merge_record_extra
 
+ENABLE_JSON: bool
+
 
 class MyLocalFormatter(coloredlogs.ColoredFormatter):
     """
@@ -52,7 +54,10 @@ def _get_logger_level(logger_name: str, debug_loggers: Optional[list[str]] = Non
 def configure_logging(
     loggers: Optional[list[str]] = None, enable_json: bool = False, debug_loggers: Optional[list[str]] = None
 ) -> Dict[str, Any]:
-    if enable_json:
+    global ENABLE_JSON
+    ENABLE_JSON = enable_json
+
+    if ENABLE_JSON:
         _format = '%(levelname)s %(asctime)s %(name)s %(message)s'
         formatter = 'alfa.logger.MyJsonFormatter'
     else:
@@ -76,7 +81,11 @@ def configure_logging(
 
 
 def log_extra(**kwargs: Any) -> Dict[str, Any]:
-    return {'extra': kwargs}
+    global ENABLE_JSON
+    if ENABLE_JSON:
+        return {'extra': kwargs}
+    else:
+        return {'extra': {'props': kwargs}}
 
 
 def log_method(logger_name: str) -> Callable[..., Any]:

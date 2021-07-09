@@ -35,9 +35,12 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
 
 class AccessLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        get_current_trace_id()
+        trace_id = get_current_trace_id()
         start = time.monotonic()
-        logger.info(f"request start", **log_extra(method=request.scope['method'], request_uri=request.scope['path'],))
+        logger.info(
+            f"request start",
+            **log_extra(method=request.scope['method'], request_uri=request.scope['path'], trace_id=trace_id),
+        )
         response = await call_next(request)
         duration = int((time.monotonic() - start) * 1000)
         logger.info(
@@ -47,6 +50,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 status_code=response.status_code,
                 request_uri=request.scope['path'],
                 duration=duration,
+                trace_id=trace_id,
             ),
         )
         return response
