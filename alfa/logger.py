@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Optional
 import coloredlogs
 from pythonjsonlogger.jsonlogger import JsonFormatter, merge_record_extra
 
-ENABLE_JSON: bool
+ENABLE_JSON: bool = False
 
 
 class MyLocalFormatter(coloredlogs.ColoredFormatter):
