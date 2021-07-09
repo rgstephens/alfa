@@ -14,6 +14,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from alfa.logger import log_extra
+
 from .dto import UnknownError
 from .opentracing import get_current_trace_id, get_tracing_http_headers
 
@@ -33,13 +35,19 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
 
 class AccessLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        trace_id = get_current_trace_id()
+        get_current_trace_id()
         start = time.monotonic()
-        logger.info(f"{request.scope['path']} {trace_id} request start")
+        logger.info(f"request start", **log_extra(method=request.scope['method'], request_uri=request.scope['path'],))
         response = await call_next(request)
         duration = int((time.monotonic() - start) * 1000)
         logger.info(
-            f"{response.status_code} {request.scope['method']} {request.scope['path']} {duration}ms {trace_id} request end"
+            f"request end",
+            **log_extra(
+                method=request.scope['method'],
+                status_code=response.status_code,
+                request_uri=request.scope['path'],
+                duration=duration,
+            ),
         )
         return response
 
