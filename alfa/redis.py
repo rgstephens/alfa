@@ -1,11 +1,9 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional
-from typing import Tuple
+from typing import Optional, Tuple
 
 import aioredis
 from aioredlock import Aioredlock
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,22 +22,10 @@ _REDIS_CONN: Optional[aioredis.Redis] = None
 _REDIS_LOCK_MANGER: Optional[Aioredlock] = None
 
 
-def init_config(
-    host: str,
-    port: int,
-    minsize: int,
-    maxsize: int,
-    locks_db: int = 1,
-) -> None:
+def init_config(host: str, port: int, minsize: int, maxsize: int, locks_db: int = 1,) -> None:
     global _CONFIG
 
-    _CONFIG = Config(
-        host=host,
-        port=port,
-        minsize=minsize,
-        maxsize=maxsize,
-        locks_db=locks_db,
-    )
+    _CONFIG = Config(host=host, port=port, minsize=minsize, maxsize=maxsize, locks_db=locks_db,)
 
 
 async def _init() -> Tuple[aioredis.Redis, Aioredlock]:
@@ -51,17 +37,11 @@ async def _init() -> Tuple[aioredis.Redis, Aioredlock]:
 
     if not _REDIS_CONN:
         _REDIS_CONN = await aioredis.create_redis_pool(
-            f'redis://{_CONFIG.host}:{_CONFIG.port}',
-            minsize=_CONFIG.minsize,
-            maxsize=_CONFIG.maxsize,
+            f'redis://{_CONFIG.host}:{_CONFIG.port}', minsize=_CONFIG.minsize, maxsize=_CONFIG.maxsize,
         )
 
     if not _REDIS_LOCK_MANGER:
-        _REDIS_LOCK_MANGER = Aioredlock([{
-            'host': _CONFIG.host,
-            'port': _CONFIG.port,
-            'db': _CONFIG.locks_db,
-        }])
+        _REDIS_LOCK_MANGER = Aioredlock([{'host': _CONFIG.host, 'port': _CONFIG.port, 'db': _CONFIG.locks_db,}])
 
     return _REDIS_CONN, _REDIS_LOCK_MANGER
 
