@@ -1,10 +1,22 @@
 import logging
 from datetime import datetime, timezone
 from functools import wraps
-from logging import config
+from logging import LogRecord, config
 from typing import Any, Callable, Dict, Optional
 
+import coloredlogs
 from pythonjsonlogger.jsonlogger import JsonFormatter, merge_record_extra
+
+
+class MyLocalFormatter(coloredlogs.ColoredFormatter):
+    """
+    небольшой хак, чтобы поддерать %(props)s в формате логов и для json и для обычного форматтера
+    """
+
+    def formatMessage(self, record: LogRecord) -> Any:
+        if not hasattr(record, 'props'):
+            record.props = ''  # type: ignore[attr-defined]
+        return super().formatMessage(record)
 
 
 class MyJsonFormatter(JsonFormatter):
@@ -37,9 +49,15 @@ def _get_logger_level(logger_name: str, debug_loggers: Optional[list[str]] = Non
         return logging.DEBUG if logger_name in debug_loggers else logging.INFO
 
 
-def configure_logging(loggers: Optional[list[str]] = None, debug_loggers: Optional[list[str]] = None) -> Dict[str, Any]:
-    _format = '%(levelname)s %(asctime)s %(name)s %(message)s'
-    formatter = 'alfa.logger.MyJsonFormatter'
+def configure_logging(
+    loggers: Optional[list[str]] = None, enable_json: bool = False, debug_loggers: Optional[list[str]] = None
+) -> Dict[str, Any]:
+    if enable_json:
+        _format = '%(levelname)s %(asctime)s %(name)s %(message)s'
+        formatter = 'alfa.logger.MyJsonFormatter'
+    else:
+        _format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s %(props)s'
+        formatter = 'alfa.logger.MyLocalFormatter'
 
     _loggers = {
         _name: {'handlers': ['default'], 'level': _get_logger_level(_name, debug_loggers), 'propagate': False}
