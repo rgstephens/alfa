@@ -63,6 +63,7 @@ class ReadyResp(StrictBaseDTO):
 class Version(BaseSettings):
     git_branch: str = Field('git_branch', env='GIT_BRANCH')
     git_short_hash: str = Field('git_short_hash', env='GIT_HASH')
+    git_tag: str = Field('git_tag', env='GIT_TAG')
     build_date: str = Field('build_date', env='BUILD_DATE')
     build_number: str = Field('build_number', env='BUILD_NUMBER')
 
